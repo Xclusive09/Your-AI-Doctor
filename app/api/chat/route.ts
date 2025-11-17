@@ -1,14 +1,53 @@
+// HealthBot AI Chat API
+// Supports Anthropic Claude 3.5 Sonnet with intelligent fallback
+
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    // For demo purposes, return a mock response
-    // In production, you would integrate with OpenAI, Claude, or other AI providers
+    // System prompt for HealthBot
+    const systemPrompt = `You are HealthBot, a world-class compassionate doctor with perfect bedside manner. 
+Use the user's real health data when available. Never give dangerous advice. Always cite sources when possible.
+Be empathetic, clear, and actionable in your responses.`;
+
+    // Check if Anthropic API key is configured
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        // Call Anthropic API directly
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1000,
+            system: systemPrompt,
+            messages: messages.map((m: any) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.content[0]?.text || 'Sorry, I could not generate a response.';
+          return Response.json({ role: 'assistant', content });
+        }
+      } catch (apiError) {
+        console.error('Anthropic API error:', apiError);
+        // Fall through to fallback
+      }
+    }
+
+    // Fallback: Smart keyword-based responses
     const lastMessage = messages[messages.length - 1];
-    
-    // Simple health-related responses based on keywords
-    let response = "";
     const content = lastMessage.content.toLowerCase();
+    
+    let response = "";
     
     if (content.includes("exercise") || content.includes("workout") || content.includes("fitness")) {
       response = "Regular exercise is crucial for maintaining good health! I recommend:\n\n1. **Cardiovascular Exercise**: Aim for at least 150 minutes of moderate-intensity aerobic activity per week, such as brisk walking, swimming, or cycling.\n\n2. **Strength Training**: Include muscle-strengthening activities at least 2 days per week.\n\n3. **Flexibility**: Don't forget stretching exercises to improve flexibility and reduce injury risk.\n\n4. **Consistency**: Start small and build up gradually. Even 10-15 minutes a day can make a difference!\n\nRemember to consult with a healthcare professional before starting any new exercise program.";
@@ -21,7 +60,7 @@ export async function POST(req: Request) {
     } else if (content.includes("heart") || content.includes("cardio")) {
       response = "Cardiovascular health is crucial! Here's how to take care of your heart:\n\n1. **Regular Exercise**: Aim for 30 minutes of moderate activity most days.\n\n2. **Healthy Diet**: Focus on fruits, vegetables, whole grains, and lean proteins.\n\n3. **Manage Stress**: High stress can affect heart health negatively.\n\n4. **Monitor Blood Pressure**: Keep track of your blood pressure regularly.\n\n5. **Avoid Smoking**: If you smoke, seek support to quit.\n\n6. **Regular Check-ups**: Visit your healthcare provider for routine heart health screenings.\n\nIf you have concerns about your heart health, please consult with a cardiologist.";
     } else {
-      response = `Hello! I'm your AI health assistant. I can provide general guidance on:\n\n✅ Exercise and fitness\n✅ Nutrition and diet\n✅ Sleep and rest\n✅ Stress management\n✅ Heart health\n✅ General wellness tips\n\n**Important**: I provide general health information for educational purposes. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.\n\nHow can I help you with your health journey today?`;
+      response = `Hello! I'm HealthBot, your AI health assistant. I can provide general guidance on:\n\n✅ Exercise and fitness\n✅ Nutrition and diet\n✅ Sleep and rest\n✅ Stress management\n✅ Heart health\n✅ General wellness tips\n\n**Important**: I provide general health information for educational purposes. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.\n\nHow can I help you with your health journey today?`;
     }
 
     return Response.json({

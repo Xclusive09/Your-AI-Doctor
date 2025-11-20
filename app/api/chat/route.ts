@@ -1,14 +1,118 @@
 // HealthBot AI Chat API
-// Supports Anthropic Claude 3.5 Sonnet with intelligent fallback
+// Real AI responses with health context, danger detection, and proactive check-ins
+
+interface HealthContext {
+  todaySteps?: number
+  averageSteps?: number
+  todaySleep?: number
+  averageSleep?: number
+  currentHRV?: number
+  averageHRV?: number
+  glucose?: number
+  restingHeartRate?: number
+  hasAbnormalMetrics?: boolean
+  abnormalMetrics?: string[]
+}
+
+function detectDangerousMetrics(context: HealthContext): { isDangerous: boolean; alerts: string[] } {
+  const alerts: string[] = []
+  
+  if (context.glucose && (context.glucose < 70 || context.glucose > 180)) {
+    alerts.push(`⚠️ ALERT: Glucose level ${context.glucose} mg/dL is ${context.glucose < 70 ? 'too low (hypoglycemia)' : 'too high (hyperglycemia)'}. Seek medical attention if you feel unwell.`)
+  }
+  
+  if (context.restingHeartRate && (context.restingHeartRate < 40 || context.restingHeartRate > 100)) {
+    alerts.push(`⚠️ ALERT: Resting heart rate ${context.restingHeartRate} bpm is ${context.restingHeartRate < 40 ? 'unusually low' : 'elevated'}. Consider consulting a healthcare provider.`)
+  }
+  
+  if (context.todaySleep && context.todaySleep < 4) {
+    alerts.push(`⚠️ ALERT: Only ${context.todaySleep} hours of sleep detected. Severe sleep deprivation can be dangerous. Please prioritize rest.`)
+  }
+  
+  return {
+    isDangerous: alerts.length > 0,
+    alerts
+  }
+}
+
+function buildHealthContextPrompt(context: HealthContext): string {
+  if (!context || Object.keys(context).length === 0) {
+    return ""
+  }
+  
+  let contextPrompt = "\n\n**User's Current Health Data:**\n"
+  
+  if (context.todaySteps !== undefined) {
+    contextPrompt += `- Today's Steps: ${context.todaySteps.toLocaleString()}`
+    if (context.averageSteps) {
+      contextPrompt += ` (7-day avg: ${context.averageSteps.toLocaleString()})`
+    }
+    contextPrompt += "\n"
+  }
+  
+  if (context.todaySleep !== undefined) {
+    contextPrompt += `- Last Night's Sleep: ${context.todaySleep}h`
+    if (context.averageSleep) {
+      contextPrompt += ` (7-day avg: ${context.averageSleep}h)`
+    }
+    contextPrompt += "\n"
+  }
+  
+  if (context.currentHRV !== undefined) {
+    contextPrompt += `- Heart Rate Variability: ${context.currentHRV}ms`
+    if (context.averageHRV) {
+      contextPrompt += ` (7-day avg: ${context.averageHRV}ms)`
+    }
+    contextPrompt += "\n"
+  }
+  
+  if (context.glucose !== undefined) {
+    contextPrompt += `- Current Glucose: ${context.glucose} mg/dL\n`
+  }
+  
+  if (context.restingHeartRate !== undefined) {
+    contextPrompt += `- Resting Heart Rate: ${context.restingHeartRate} bpm\n`
+  }
+  
+  return contextPrompt
+}
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages, healthContext } = await req.json();
 
-    // System prompt for HealthBot
-    const systemPrompt = `You are HealthBot, a world-class compassionate doctor with perfect bedside manner. 
-Use the user's real health data when available. Never give dangerous advice. Always cite sources when possible.
-Be empathetic, clear, and actionable in your responses.`;
+    // Detect dangerous health metrics
+    const dangerAnalysis = healthContext ? detectDangerousMetrics(healthContext) : { isDangerous: false, alerts: [] }
+    
+    // Build enhanced system prompt with health context
+    const healthContextPrompt = healthContext ? buildHealthContextPrompt(healthContext) : ""
+    
+    const systemPrompt = `You are HealthBot, a world-class compassionate AI doctor with perfect bedside manner and deep medical knowledge.
+
+**Your Core Capabilities:**
+- Provide evidence-based health advice with empathy and clarity
+- Analyze health metrics and identify concerning patterns
+- Offer personalized recommendations based on user's health data
+- Explain complex medical concepts in simple, understandable terms
+- Be proactive in health monitoring and preventive care
+
+**Critical Safety Guidelines:**
+- ALWAYS detect and alert on dangerous vital signs or health metrics
+- Never downplay serious symptoms or dangerous conditions
+- Recommend professional medical attention when appropriate
+- Emphasize that you are an AI assistant, not a replacement for doctors
+- Be extra cautious with medications, dosages, and treatment advice
+
+**Communication Style:**
+- Be warm, compassionate, and humanized (use natural language, occasional empathy phrases)
+- Provide actionable, specific advice rather than generic information
+- Use bullet points and structure for clarity
+- Cite scientific sources when making claims
+- Ask follow-up questions to better understand the user's situation
+
+${healthContextPrompt}
+
+${dangerAnalysis.isDangerous ? `\n**🚨 URGENT HEALTH ALERTS:**\n${dangerAnalysis.alerts.join('\n')}\n\nPrioritize addressing these concerns in your response.` : ''}`;
 
     // Check if Anthropic API key is configured
     if (process.env.ANTHROPIC_API_KEY) {
@@ -23,7 +127,7 @@ Be empathetic, clear, and actionable in your responses.`;
           },
           body: JSON.stringify({
             model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1000,
+            max_tokens: 1500,
             system: systemPrompt,
             messages: messages.map((m: any) => ({
               role: m.role,
@@ -34,7 +138,13 @@ Be empathetic, clear, and actionable in your responses.`;
 
         if (response.ok) {
           const data = await response.json();
-          const content = data.content[0]?.text || 'Sorry, I could not generate a response.';
+          let content = data.content[0]?.text || 'Sorry, I could not generate a response.';
+          
+          // Prepend danger alerts if present
+          if (dangerAnalysis.isDangerous) {
+            content = dangerAnalysis.alerts.join('\n\n') + '\n\n' + content
+          }
+          
           return Response.json({ role: 'assistant', content });
         }
       } catch (apiError) {
@@ -43,29 +153,35 @@ Be empathetic, clear, and actionable in your responses.`;
       }
     }
 
-    // Fallback: Smart keyword-based responses
-    const lastMessage = messages[messages.length - 1];
-    const content = lastMessage.content.toLowerCase();
-    
-    let response = "";
-    
-    if (content.includes("exercise") || content.includes("workout") || content.includes("fitness")) {
-      response = "Regular exercise is crucial for maintaining good health! I recommend:\n\n1. **Cardiovascular Exercise**: Aim for at least 150 minutes of moderate-intensity aerobic activity per week, such as brisk walking, swimming, or cycling.\n\n2. **Strength Training**: Include muscle-strengthening activities at least 2 days per week.\n\n3. **Flexibility**: Don't forget stretching exercises to improve flexibility and reduce injury risk.\n\n4. **Consistency**: Start small and build up gradually. Even 10-15 minutes a day can make a difference!\n\nRemember to consult with a healthcare professional before starting any new exercise program.";
-    } else if (content.includes("sleep") || content.includes("rest")) {
-      response = "Quality sleep is essential for overall health and wellness! Here are some tips:\n\n1. **Consistency**: Try to go to bed and wake up at the same time every day, even on weekends.\n\n2. **Environment**: Keep your bedroom cool, dark, and quiet.\n\n3. **Screen Time**: Avoid screens at least 1 hour before bed.\n\n4. **Relaxation**: Develop a calming bedtime routine like reading or meditation.\n\n5. **Duration**: Aim for 7-9 hours of sleep per night for adults.\n\nIf you're experiencing persistent sleep issues, please consult with a healthcare provider.";
-    } else if (content.includes("nutrition") || content.includes("diet") || content.includes("food") || content.includes("eat")) {
-      response = "Nutrition plays a vital role in your health! Here are some general guidelines:\n\n1. **Balanced Diet**: Include a variety of fruits, vegetables, whole grains, lean proteins, and healthy fats.\n\n2. **Hydration**: Drink plenty of water throughout the day (about 8 glasses or 2 liters).\n\n3. **Portion Control**: Be mindful of portion sizes to maintain a healthy weight.\n\n4. **Limit Processed Foods**: Reduce intake of highly processed foods, added sugars, and excessive salt.\n\n5. **Meal Timing**: Try to eat regular meals and avoid skipping breakfast.\n\nFor personalized nutrition advice, consider consulting with a registered dietitian.";
-    } else if (content.includes("stress") || content.includes("anxiety") || content.includes("mental")) {
-      response = "Managing stress and mental health is just as important as physical health:\n\n1. **Mindfulness**: Practice meditation or deep breathing exercises.\n\n2. **Physical Activity**: Regular exercise can significantly reduce stress levels.\n\n3. **Social Connection**: Maintain relationships with friends and family.\n\n4. **Time Management**: Prioritize tasks and learn to say no when needed.\n\n5. **Professional Help**: Don't hesitate to seek support from a mental health professional if needed.\n\nRemember, taking care of your mental health is a sign of strength, not weakness.";
-    } else if (content.includes("heart") || content.includes("cardio")) {
-      response = "Cardiovascular health is crucial! Here's how to take care of your heart:\n\n1. **Regular Exercise**: Aim for 30 minutes of moderate activity most days.\n\n2. **Healthy Diet**: Focus on fruits, vegetables, whole grains, and lean proteins.\n\n3. **Manage Stress**: High stress can affect heart health negatively.\n\n4. **Monitor Blood Pressure**: Keep track of your blood pressure regularly.\n\n5. **Avoid Smoking**: If you smoke, seek support to quit.\n\n6. **Regular Check-ups**: Visit your healthcare provider for routine heart health screenings.\n\nIf you have concerns about your heart health, please consult with a cardiologist.";
-    } else {
-      response = `Hello! I'm HealthBot, your AI health assistant. I can provide general guidance on:\n\n✅ Exercise and fitness\n✅ Nutrition and diet\n✅ Sleep and rest\n✅ Stress management\n✅ Heart health\n✅ General wellness tips\n\n**Important**: I provide general health information for educational purposes. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.\n\nHow can I help you with your health journey today?`;
-    }
+    // If API key not configured, return helpful error message
+    const errorResponse = `I apologize, but I need to be configured with an AI API key to provide personalized health advice. 
+
+However, I can still help! Here's what you should know:
+
+**🚨 Important Health Alerts:**
+${dangerAnalysis.isDangerous ? dangerAnalysis.alerts.join('\n\n') : 'No immediate health concerns detected from your metrics.'}
+
+**Your Health Summary:**
+${healthContext ? `
+- Activity: ${healthContext.todaySteps?.toLocaleString() || 'N/A'} steps today
+- Sleep: ${healthContext.todaySleep || 'N/A'} hours last night
+- Heart Health: ${healthContext.currentHRV || 'N/A'} ms HRV
+` : 'Connect your devices to see your health data here.'}
+
+**General Recommendations:**
+1. Maintain regular physical activity (150 min/week moderate exercise)
+2. Prioritize 7-9 hours of quality sleep
+3. Stay hydrated (8 glasses of water daily)
+4. Eat a balanced diet with fruits, vegetables, and lean proteins
+5. Manage stress through mindfulness and relaxation techniques
+
+**⚠️ Disclaimer:** I'm an AI assistant providing general health information. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.
+
+To enable full AI capabilities, please configure the ANTHROPIC_API_KEY environment variable.`;
 
     return Response.json({
       role: 'assistant',
-      content: response
+      content: errorResponse
     });
   } catch (error) {
     console.error('Chat API error:', error);

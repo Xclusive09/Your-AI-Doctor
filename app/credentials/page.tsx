@@ -4,15 +4,20 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Award, Check, Lock, TrendingUp, Heart, Footprints, Moon, Zap, Shield, Trophy, Target } from "lucide-react"
+import { Award, Check, Lock, TrendingUp, Heart, Footprints, Moon, Zap, Shield, Trophy, Target, Download, Share2, Link as LinkIcon, Copy } from "lucide-react"
 import { useHealthStore } from "@/store/useHealthStore"
+import { useAuthStore } from "@/store/useAuthStore"
 import { mintHealthCredential, storeCredential, getTxExplorerUrl } from "@/lib/blockdag"
+import { downloadBadgeImage, copyShareLink, shareBadgeNative, generateShareText } from "@/lib/badgeGenerator"
 import toast from "react-hot-toast"
 import confetti from "canvas-confetti"
 
 export default function CredentialsPage() {
   const [minting, setMinting] = useState<string | null>(null)
+  const [claimedBadges, setClaimedBadges] = useState<Set<string>>(new Set())
+  const [sharingBadge, setSharingBadge] = useState<string | null>(null)
   const checkBadgeEligibility = useHealthStore(state => state.checkBadgeEligibility)
+  const { user } = useAuthStore()
   
   // Mock user address
   const userAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
@@ -92,6 +97,7 @@ export default function CredentialsPage() {
       
       if (result) {
         storeCredential(result)
+        setClaimedBadges(prev => new Set(prev).add(credential.id))
         
         // Celebrate!
         confetti({
@@ -120,6 +126,73 @@ export default function CredentialsPage() {
     } finally {
       setMinting(null)
     }
+  }
+
+  const handleDownloadBadge = async (credential: typeof credentials[0]) => {
+    try {
+      toast.loading("Generating badge image...", { id: 'download' })
+      await downloadBadgeImage({
+        id: credential.id,
+        name: credential.name,
+        description: credential.description,
+        rarity: credential.rarity,
+        earnedDate: new Date().toISOString(),
+        username: user?.username || 'HealthBot User',
+      })
+      toast.success("Badge downloaded successfully!", { id: 'download' })
+    } catch (error) {
+      toast.error("Failed to download badge", { id: 'download' })
+    }
+  }
+
+  const handleShareBadge = async (credential: typeof credentials[0]) => {
+    setSharingBadge(credential.id)
+    
+    const badgeData = {
+      id: credential.id,
+      name: credential.name,
+      description: credential.description,
+      rarity: credential.rarity,
+      earnedDate: new Date().toISOString(),
+      username: user?.username || 'HealthBot User',
+    }
+    
+    // Try native share first (mobile)
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await shareBadgeNative(badgeData)
+        toast.success("Badge shared successfully!")
+        setSharingBadge(null)
+        return
+      } catch (error) {
+        // Fall through to copy link
+      }
+    }
+    
+    // Copy link to clipboard
+    try {
+      await copyShareLink(badgeData)
+      toast.success("Share link copied to clipboard!")
+    } catch (error) {
+      toast.error("Failed to copy share link")
+    }
+    
+    setSharingBadge(null)
+  }
+
+  const handleCopyShareText = (credential: typeof credentials[0]) => {
+    const badgeData = {
+      id: credential.id,
+      name: credential.name,
+      description: credential.description,
+      rarity: credential.rarity,
+      earnedDate: new Date().toISOString(),
+      username: user?.username || 'HealthBot User',
+    }
+    
+    const shareText = generateShareText(badgeData)
+    navigator.clipboard.writeText(shareText)
+    toast.success("Share text copied! Ready to post on social media 🎉")
   }
 
   return (
@@ -215,23 +288,57 @@ export default function CredentialsPage() {
                 <CardContent className="pt-4 border-t border-gray-700">
                   {eligible ? (
                     <div className="space-y-3">
-                      <Button 
-                        onClick={() => handleClaimBadge(credential)}
-                        disabled={isCurrentlyMinting}
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      >
-                        {isCurrentlyMinting ? (
-                          <>
-                            <Zap className="h-4 w-4 mr-2 animate-spin" />
-                            Minting...
-                          </>
-                        ) : (
-                          <>
-                            <Award className="h-4 w-4 mr-2" />
-                            Claim Badge
-                          </>
-                        )}
-                      </Button>
+                      {!claimedBadges.has(credential.id) ? (
+                        <Button 
+                          onClick={() => handleClaimBadge(credential)}
+                          disabled={isCurrentlyMinting}
+                          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        >
+                          {isCurrentlyMinting ? (
+                            <>
+                              <Zap className="h-4 w-4 mr-2 animate-spin" />
+                              Minting...
+                            </>
+                          ) : (
+                            <>
+                              <Award className="h-4 w-4 mr-2" />
+                              Claim Badge
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={() => handleDownloadBadge(credential)}
+                              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                            <Button 
+                              onClick={() => handleShareBadge(credential)}
+                              disabled={sharingBadge === credential.id}
+                              className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                            >
+                              {sharingBadge === credential.id ? (
+                                <Zap className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Share2 className="h-4 w-4 mr-2" />
+                              )}
+                              Share
+                            </Button>
+                          </div>
+                          <Button 
+                            onClick={() => handleCopyShareText(credential)}
+                            variant="outline" 
+                            className="w-full bg-gray-900/50 border-gray-700 hover:bg-gray-800/50 text-gray-300"
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy Share Text
+                          </Button>
+                        </div>
+                      )}
                       <Button 
                         variant="outline" 
                         className="w-full bg-gray-900/50 border-gray-700 hover:bg-gray-800/50 text-gray-300"

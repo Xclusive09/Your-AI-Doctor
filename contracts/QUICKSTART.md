@@ -14,12 +14,9 @@ Follow these steps to deploy your smart contract and integrate it with your app.
 
 1. Open [BlockDAG IDE](https://ide.blockdag.network)
 2. Create a new project
-3. Upload these contract files:
-   - `HealthPassport.sol` (main contract)
-   - `AccessControl.sol` (dependency)
-   - `IHealthPassport.sol` (interface)
-   - `ICredentialVerifier.sol` (interface)
-4. Select `HealthPassport.sol`
+3. Upload the single contract file:
+   - `HealthPassportComplete.sol` (complete all-in-one contract)
+4. Select `HealthPassportComplete.sol`
 5. Click **Compile**
 6. Verify successful compilation ✅
 7. **Save the output:**

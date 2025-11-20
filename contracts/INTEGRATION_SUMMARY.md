@@ -92,7 +92,7 @@ Complete Web3 client for interacting with the deployed contract:
 
 1. **Compile in BlockDAG IDE**:
    ```
-   1. Upload HealthPassport.sol and dependencies
+   1. Upload HealthPassportComplete.sol (single file)
    2. Click "Compile"
    3. Copy ABI and Bytecode
    ```
@@ -152,16 +152,15 @@ Complete Web3 client for interacting with the deployed contract:
 ```
 Your-AI-Doctor/
 ├── contracts/
-│   ├── HealthPassport.sol           # Main contract
-│   ├── AccessControl.sol            # Access control base
-│   ├── IHealthPassport.sol          # Interface
-│   ├── ICredentialVerifier.sol      # Verifier interface
+│   ├── HealthPassportComplete.sol   # ⭐ Complete single-file contract
 │   ├── standalone-deploy.js         # ⭐ Main deployment script
 │   ├── blockdag-deploy.js           # Alternative deployment
 │   ├── deploy.js                    # Local deployment
 │   ├── package.json                 # Contract dependencies
 │   ├── QUICKSTART.md                # Quick start guide
 │   ├── DEPLOYMENT_GUIDE.md          # Full deployment docs
+│   ├── INTEGRATION_SUMMARY.md       # This file
+│   ├── START_HERE.md                # 5-minute quick start
 │   └── README.md                    # Contract documentation
 ├── lib/
 │   └── web3-client.ts               # Web3 integration

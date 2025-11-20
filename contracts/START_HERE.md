@@ -6,11 +6,8 @@ Welcome! This guide will get your HealthPassport smart contract deployed on Bloc
 
 ### Step 1: Compile in BlockDAG IDE
 1. Go to https://ide.blockdag.network
-2. Upload these files:
-   - `HealthPassport.sol`
-   - `AccessControl.sol`
-   - `IHealthPassport.sol`
-   - `ICredentialVerifier.sol`
+2. Upload the single contract file:
+   - `HealthPassportComplete.sol`
 3. Click **"Compile"**
 4. ✅ Copy the **ABI** (JSON array)
 5. ✅ Copy the **Bytecode** (hex string starting with 0x)
@@ -141,9 +138,7 @@ contracts/
 ├── QUICKSTART.md              ← Detailed quick start
 ├── DEPLOYMENT_GUIDE.md        ← Complete documentation
 ├── INTEGRATION_SUMMARY.md     ← Integration examples
-├── HealthPassport.sol         ← Main contract
-├── AccessControl.sol          ← Access control
-└── ...other contracts
+└── HealthPassportComplete.sol ← Single complete contract file
 ```
 
 ## 💡 Pro Tips

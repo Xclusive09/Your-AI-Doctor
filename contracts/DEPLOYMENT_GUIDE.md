@@ -27,15 +27,12 @@ This is the simplest method where you use BlockDAG IDE's built-in tools.
 
 1. Open BlockDAG IDE
 2. Create a new project or workspace
-3. Copy the following contract files to the IDE:
-   - `HealthPassport.sol` (main contract)
-   - `AccessControl.sol` (base contract)
-   - `IHealthPassport.sol` (interface)
-   - `ICredentialVerifier.sol` (interface)
+3. Upload the single contract file to the IDE:
+   - `HealthPassportComplete.sol` (complete all-in-one contract)
 
 #### Step 2: Compile the Contract
 
-1. Select `HealthPassport.sol` in the IDE
+1. Select `HealthPassportComplete.sol` in the IDE
 2. Click "Compile" or use the compile button
 3. Ensure compilation is successful (check for any errors)
 4. The IDE will generate:

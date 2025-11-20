@@ -1,62 +1,53 @@
-# Health Passport Smart Contracts
+# Health Passport Smart Contract
 
-This directory contains the Solidity smart contracts for the AI Doctor Health Passport system on BlockDAG blockchain.
+This directory contains the Solidity smart contract for the AI Doctor Health Passport system on BlockDAG blockchain.
 
 ## 📋 Contract Overview
 
-### Core Contracts
+### **HealthPassportComplete.sol**
+A complete, single-file implementation of the Health Passport soulbound token system with built-in access control and verification features.
 
-#### 1. **HealthPassport.sol**
-Main contract for managing soulbound health credential NFTs.
-
-**Features:**
-- Mints non-transferable (soulbound) health credentials
-- Tracks ownership and balances
-- Manages credential metadata
-- Supports zero-knowledge proof verification
-- Credential revocation functionality
-- ERC721-compatible interface
+**All-in-One Features:**
+- ✅ Built-in role-based access control (ADMIN, MINTER, VERIFIER roles)
+- ✅ Mints non-transferable (soulbound) health credentials
+- ✅ Tracks ownership and balances
+- ✅ Manages credential metadata
+- ✅ Supports zero-knowledge proof verification
+- ✅ Credential revocation functionality
+- ✅ ERC721-compatible interface
+- ✅ Merkle proof verification
+- ✅ Batch verification support
 
 **Key Functions:**
+
+*Access Control:*
+- `grantRole(role, account)` - Grant role to account
+- `revokeRole(role, account)` - Revoke role from account
+- `hasRole(role, account)` - Check if account has role
+
+*Credential Management:*
 - `mintSoulbound(tokenId, recipient, metadata)` - Mint a new credential
 - `ownerOf(tokenId)` - Get credential owner
 - `balanceOf(address)` - Get credential count for address
 - `getCredentialsByOwner(address)` - Get all credentials for owner
-- `verifyCredential(tokenId, proof)` - Verify credential with ZK proof
 - `revokeCredential(tokenId, reason)` - Revoke a credential
 
-#### 2. **HealthCredentials.sol**
-Manages different types of health credentials and their requirements.
+*Verification:*
+- `verifyCredential(tokenId, proof)` - Verify credential with ZK proof
+- `batchVerifyCredentials(tokenIds, proofs)` - Batch verify credentials
+- `isCredentialValid(tokenId)` - Check if credential is valid
 
-**Features:**
-- Define and register credential types
-- Track credential statistics
-- Manage credential requirements
-- Set validity periods for credentials
-- Default credential types pre-registered
-
-**Default Credential Types:**
-- **Verified Walker**: 90 days with ≥10,000 steps
-- **Deep Sleep Master**: 60 nights with ≥8 hours sleep
-- **Metabolic Champion**: 30-day glucose SD <15
-- **Cardio Elite**: 90-day average HRV >70
-- **Century Club**: 100,000 steps in 7 days
-- **7-Day Streak Master**: 7 consecutive days tracking
-
-**Key Functions:**
-- `registerCredentialType(typeId, name, description, requirements, validityPeriod)` - Register new type
-- `getCredentialType(typeId)` - Get credential type details
-- `getCredentialStats(typeId)` - Get issuance statistics
-- `recordCredentialIssued(typeId)` - Record new issuance
-- `recordCredentialRevoked(typeId)` - Record revocation
-
-#### 3. **AccessControl.sol**
-Role-based access control for the health passport system.
+*Metadata & Info:*
+- `tokenURI(tokenId)` - Get token metadata URI
+- `getCredentialType(tokenId)` - Get credential type
+- `getIssuanceTimestamp(tokenId)` - Get issuance time
+- `getRevocationReason(tokenId)` - Get revocation reason
+- `totalSupply()` - Get total minted credentials
 
 **Roles:**
-- **ADMIN_ROLE**: System administrators
+- **ADMIN_ROLE**: System administrators, can grant/revoke other roles
 - **MINTER_ROLE**: Authorized credential minters
-- **VERIFIER_ROLE**: Credential verifiers
+- **VERIFIER_ROLE**: Credential verifiers, can revoke and set verification roots
 - **HEALTHCARE_PROVIDER_ROLE**: Healthcare data providers
 
 **Key Functions:**
@@ -66,71 +57,6 @@ Role-based access control for the health passport system.
 - `renounceRole(role, account)` - Renounce own role
 
 ### Supporting Contracts
-
-#### 4. **HealthDataRegistry.sol**
-Registry for managing authorized health data providers and data sources.
-
-**Features:**
-- Register and manage health data providers
-- Connect and verify data sources
-- Track data synchronization
-- Support for multiple data source types
-
-**Supported Data Sources:**
-- Apple Health
-- Google Fit
-- Oura Ring
-- Levels (glucose monitoring)
-- Whoop
-- MyFitnessPal
-
-**Key Functions:**
-- `registerProvider(providerId, name, description, address, dataTypes)` - Register provider
-- `connectDataSource(sourceId, name, sourceType)` - Connect user data source
-- `syncDataSource(sourceId)` - Update sync timestamp
-- `verifyDataSource(sourceId)` - Verify data source authenticity
-- `getUserDataSources(address)` - Get all sources for user
-
-#### 5. **ZKVerifier.sol**
-Zero-knowledge proof verification for privacy-preserving credential verification.
-
-**Features:**
-- Merkle tree-based proof verification
-- Batch proof verification support
-- Proof replay prevention
-- Privacy-preserving data verification
-- Time-bound verification parameters
-
-**Key Functions:**
-- `setVerificationParams(verificationId, merkleRoot, threshold, validUntil)` - Set verification params
-- `verifyProof(verificationId, proof, leaf)` - Verify a ZK proof
-- `batchVerifyProofs(verificationId, proofs, leaves)` - Batch verify proofs
-- `checkProof(verificationId, proof, leaf)` - Check proof without recording
-- `verifyPrivateData(verificationId, dataHash, proof)` - Verify private data
-
-#### 6. **BatchMinting.sol**
-Enables efficient batch minting of health credentials for high-throughput scenarios.
-
-**Features:**
-- Batch mint multiple credentials in one transaction
-- Optimized for BlockDAG's 10,000+ TPS
-- Audience challenge support
-- Automatic retry on failures
-- Detailed minting statistics
-
-**Key Functions:**
-- `batchMintCredentials(recipients, tokenIds, metadataList)` - Batch mint credentials
-- `mintAudienceChallenge(recipient, count, baseTokenId, credentialType)` - Mint for challenge
-- `getBatchRequest(batchId)` - Get batch details
-- `getStatistics()` - Get minting statistics
-
-### Interface Contracts
-
-#### 7. **IHealthPassport.sol**
-Interface definition for Health Passport contract.
-
-#### 8. **ICredentialVerifier.sol**
-Interface definition for credential verification functionality.
 
 ## 🏗️ Architecture
 
@@ -144,9 +70,14 @@ Interface definition for credential verification functionality.
 ┌─────────────────────────────────────────────────────────────┐
 │                    BlockDAG Blockchain                       │
 │                                                              │
-│  ┌────────────────┐         ┌─────────────────┐            │
-│  │ HealthPassport │◄────────┤ BatchMinting    │            │
-│  │     (Main)     │         │   (Utility)     │            │
+│           ┌─────────────────────────────┐                   │
+│           │  HealthPassportComplete     │                   │
+│           │                             │                   │
+│           │  - Access Control           │                   │
+│           │  - Token Management         │                   │
+│           │  - ZK Verification          │                   │
+│           │  - Soulbound Logic          │                   │
+│           └─────────────────────────────┘                   │
 │  └────────────────┘         └─────────────────┘            │
 │         │  │                                                │
 │         │  │                                                │
@@ -219,68 +150,35 @@ foundryup
 forge build
 ```
 
-### Deployment Order
+### Deployment Process
 
-Deploy contracts in this specific order due to dependencies:
+Since the contract is now a single file, deployment is straightforward:
 
-1. **AccessControl.sol** (base contract, no dependencies)
-2. **HealthCredentials.sol** (inherits AccessControl)
-3. **HealthDataRegistry.sol** (inherits AccessControl)
-4. **ZKVerifier.sol** (inherits AccessControl)
-5. **HealthPassport.sol** (inherits AccessControl, implements interfaces)
-6. **BatchMinting.sol** (requires HealthPassport address)
+1. **Compile** `HealthPassportComplete.sol` in BlockDAG IDE
+2. **Copy** the ABI and Bytecode
+3. **Run** the `standalone-deploy.js` script
+4. **Save** the contract address
 
 ### Deployment Script Example
 
 ```javascript
-// scripts/deploy.js
-const { ethers } = require("hardhat");
+// Using standalone-deploy.js
+const Web3 = require('web3');
 
 async function main() {
-  console.log("Deploying Health Passport contracts to BlockDAG...");
+  console.log("Deploying HealthPassport to BlockDAG...");
 
-  // 1. Deploy HealthPassport (includes AccessControl)
-  const HealthPassport = await ethers.getContractFactory("HealthPassport");
+  // Deploy HealthPassportComplete (all-in-one contract)
+  const HealthPassport = await ethers.getContractFactory("HealthPassportComplete");
   const healthPassport = await HealthPassport.deploy();
+  await healthPassport.waitForDeployment();
   await healthPassport.waitForDeployment();
   console.log("HealthPassport deployed to:", await healthPassport.getAddress());
 
-  // 2. Deploy HealthCredentials
-  const HealthCredentials = await ethers.getContractFactory("HealthCredentials");
-  const healthCredentials = await HealthCredentials.deploy();
-  await healthCredentials.waitForDeployment();
-  console.log("HealthCredentials deployed to:", await healthCredentials.getAddress());
-
-  // 3. Deploy HealthDataRegistry
-  const HealthDataRegistry = await ethers.getContractFactory("HealthDataRegistry");
-  const healthDataRegistry = await HealthDataRegistry.deploy();
-  await healthDataRegistry.waitForDeployment();
-  console.log("HealthDataRegistry deployed to:", await healthDataRegistry.getAddress());
-
-  // 4. Deploy ZKVerifier
-  const ZKVerifier = await ethers.getContractFactory("ZKVerifier");
-  const zkVerifier = await ZKVerifier.deploy();
-  await zkVerifier.waitForDeployment();
-  console.log("ZKVerifier deployed to:", await zkVerifier.getAddress());
-
-  // 5. Deploy BatchMinting
-  const BatchMinting = await ethers.getContractFactory("BatchMinting");
-  const batchMinting = await BatchMinting.deploy(await healthPassport.getAddress());
-  await batchMinting.waitForDeployment();
-  console.log("BatchMinting deployed to:", await batchMinting.getAddress());
-
-  // Grant roles
-  const MINTER_ROLE = await healthPassport.MINTER_ROLE();
-  await healthPassport.grantRole(MINTER_ROLE, await batchMinting.getAddress());
-  console.log("Granted MINTER_ROLE to BatchMinting contract");
-
   console.log("\nDeployment Summary:");
   console.log("====================");
-  console.log("HealthPassport:", await healthPassport.getAddress());
-  console.log("HealthCredentials:", await healthCredentials.getAddress());
-  console.log("HealthDataRegistry:", await healthDataRegistry.getAddress());
-  console.log("ZKVerifier:", await zkVerifier.getAddress());
-  console.log("BatchMinting:", await batchMinting.getAddress());
+  console.log("HealthPassportComplete:", await healthPassport.getAddress());
+  console.log("Contract includes: Access Control, Token Management, ZK Verification");
 }
 
 main()

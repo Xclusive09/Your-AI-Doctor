@@ -129,7 +129,7 @@ ${dangerAnalysis.isDangerous ? `\n**🚨 URGENT HEALTH ALERTS:**\n${dangerAnalys
             model: 'claude-3-5-sonnet-20241022',
             max_tokens: 1500,
             system: systemPrompt,
-            messages: messages.map((m: any) => ({
+            messages: messages.map((m: { role: string; content: string }) => ({
               role: m.role,
               content: m.content,
             })),

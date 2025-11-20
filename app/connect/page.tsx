@@ -94,7 +94,7 @@ export default function ConnectPage() {
     }))
   }
 
-  const parseCSVFile = (file: File): Promise<any[]> => {
+  const parseCSVFile = (file: File): Promise<Record<string, string>[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       
@@ -113,10 +113,10 @@ export default function ConnectPage() {
           
           for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',')
-            const row: any = {}
+            const row: Record<string, string> = {}
             
             headers.forEach((header, index) => {
-              row[header] = values[index]?.trim()
+              row[header] = values[index]?.trim() || ''
             })
             
             data.push(row)
@@ -164,8 +164,7 @@ export default function ConnectPage() {
       // Here you would normally process and store the data
       // For now, we just show success
       
-    } catch (error) {
-      console.error('CSV parse error:', error)
+    } catch {
       toast.error(
         `Failed to parse CSV file. Please ensure it's formatted correctly.`,
         { id: 'csv' }

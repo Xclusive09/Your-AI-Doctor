@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Send, Bot, User, Loader2, Activity, Heart, AlertTriangle } from "lucide-react"
+import { Send, Bot, User, Loader2, Activity, Heart } from "lucide-react"
 import { useHealthStore } from "@/store/useHealthStore"
 import toast from "react-hot-toast"
 

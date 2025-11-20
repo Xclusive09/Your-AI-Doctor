@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Award, Check, Lock, TrendingUp, Heart, Footprints, Moon, Zap, Shield, Trophy, Target, Download, Share2, Link as LinkIcon, Copy } from "lucide-react"
+import { Award, Check, Lock, Heart, Footprints, Moon, Zap, Shield, Trophy, Target, Download, Share2, Copy } from "lucide-react"
 import { useHealthStore } from "@/store/useHealthStore"
 import { useAuthStore } from "@/store/useAuthStore"
 import { mintHealthCredential, storeCredential, getTxExplorerUrl } from "@/lib/blockdag"
@@ -121,7 +121,7 @@ export default function CredentialsPage() {
           { id: 'mint', duration: 5000 }
         )
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to mint credential. Please try again.", { id: 'mint' })
     } finally {
       setMinting(null)
@@ -140,7 +140,7 @@ export default function CredentialsPage() {
         username: user?.username || 'HealthBot User',
       })
       toast.success("Badge downloaded successfully!", { id: 'download' })
-    } catch (error) {
+    } catch {
       toast.error("Failed to download badge", { id: 'download' })
     }
   }
@@ -164,7 +164,7 @@ export default function CredentialsPage() {
         toast.success("Badge shared successfully!")
         setSharingBadge(null)
         return
-      } catch (error) {
+      } catch {
         // Fall through to copy link
       }
     }
@@ -173,7 +173,7 @@ export default function CredentialsPage() {
     try {
       await copyShareLink(badgeData)
       toast.success("Share link copied to clipboard!")
-    } catch (error) {
+    } catch {
       toast.error("Failed to copy share link")
     }
     

@@ -23,13 +23,22 @@ interface AuthState {
 // Mock user database - in production, this would be a real database
 const USERS_STORAGE_KEY = 'healthbot_users'
 
-function getUsers(): Record<string, { id: string; username: string; email: string; password: string; name?: string; createdAt: string }> {
+interface UserData {
+  id: string
+  username: string
+  email: string
+  password: string
+  name?: string
+  createdAt: string
+}
+
+function getUsers(): Record<string, UserData> {
   if (typeof window === 'undefined') return {}
   const stored = localStorage.getItem(USERS_STORAGE_KEY)
   return stored ? JSON.parse(stored) : {}
 }
 
-function saveUsers(users: Record<string, any>) {
+function saveUsers(users: Record<string, UserData>) {
   if (typeof window === 'undefined') return
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users))
 }
@@ -48,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
           await new Promise(resolve => setTimeout(resolve, 500))
           
           const users = getUsers()
-          const user = Object.values(users).find((u: any) => u.email === email)
+          const user = Object.values(users).find(u => u.email === email)
           
           if (!user) {
             throw new Error('User not found')
@@ -60,6 +69,7 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('Invalid password')
           }
           
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { password: _, ...userWithoutPassword } = user
           set({
             user: userWithoutPassword,
@@ -68,7 +78,7 @@ export const useAuthStore = create<AuthState>()(
           })
           
           return true
-        } catch (error) {
+        } catch {
           set({ isLoading: false })
           return false
         }
@@ -83,11 +93,11 @@ export const useAuthStore = create<AuthState>()(
           const users = getUsers()
           
           // Check if user already exists
-          if (Object.values(users).some((u: any) => u.email === email)) {
+          if (Object.values(users).some(u => u.email === email)) {
             throw new Error('Email already registered')
           }
           
-          if (Object.values(users).some((u: any) => u.username === username)) {
+          if (Object.values(users).some(u => u.username === username)) {
             throw new Error('Username already taken')
           }
           
@@ -103,6 +113,7 @@ export const useAuthStore = create<AuthState>()(
           users[newUser.id] = newUser
           saveUsers(users)
           
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { password: _, ...userWithoutPassword } = newUser
           set({
             user: userWithoutPassword,
@@ -111,7 +122,7 @@ export const useAuthStore = create<AuthState>()(
           })
           
           return true
-        } catch (error) {
+        } catch {
           set({ isLoading: false })
           return false
         }

@@ -13,19 +13,16 @@ import toast from "react-hot-toast"
 export default function ProfilePage() {
   const router = useRouter()
   const { user, isAuthenticated, updateUser } = useAuthStore()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  // Initialize state from user prop directly
+  const [name, setName] = useState(user?.name || user?.username || "")
+  const [email] = useState(user?.email || "")
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login")
       return
     }
-    if (user) {
-      setName(user.name || user.username)
-      setEmail(user.email)
-    }
-  }, [user, isAuthenticated, router])
+  }, [isAuthenticated, router])
 
   const handleSave = () => {
     if (user) {

@@ -92,7 +92,7 @@ export default function Dashboard() {
       })
       
       toast.success("🎉 200 credentials minted on BlockDAG!")
-    } catch (error) {
+    } catch {
       toast.error("Challenge failed. Please try again.")
     } finally {
       setIsMinting(false)

@@ -139,7 +139,16 @@ Your-AI-Doctor/
 │   ├── utils.ts                      # cn() helper
 │   └── blockdag.ts                   # BlockDAG utilities
 ├── contracts/
-│   └── HealthPassport.json           # Smart contract ABI
+│   ├── HealthPassport.sol            # Main soulbound NFT contract
+│   ├── HealthCredentials.sol         # Credential type management
+│   ├── HealthDataRegistry.sol        # Data provider registry
+│   ├── ZKVerifier.sol                # Zero-knowledge proof verification
+│   ├── BatchMinting.sol              # High-throughput batch minting
+│   ├── AccessControl.sol             # Role-based access control
+│   ├── IHealthPassport.sol           # Health passport interface
+│   ├── ICredentialVerifier.sol       # Verifier interface
+│   ├── HealthPassport.json           # Smart contract ABI
+│   └── README.md                     # Contract documentation & deployment guide
 ├── public/
 │   ├── manifest.json                 # PWA manifest
 │   └── icons/                        # PWA icons
@@ -172,13 +181,25 @@ Real calculations based on mock data:
 - Century Club: Rolling 7-day window for 100k steps
 
 ### BlockDAG Integration
+
+**Smart Contracts** (Production-Ready):
+- **8 Solidity contracts** in `contracts/` directory:
+  - **HealthPassport.sol**: Main soulbound NFT contract for health credentials
+  - **HealthCredentials.sol**: Manages 6 default credential types with requirements
+  - **HealthDataRegistry.sol**: Registry for Apple Health, Google Fit, Oura, etc.
+  - **ZKVerifier.sol**: Zero-knowledge proof verification for privacy
+  - **BatchMinting.sol**: Optimized for BlockDAG's 10,000+ TPS
+  - **AccessControl.sol**: Role-based permissions (Admin, Minter, Verifier, Provider)
+  - **IHealthPassport.sol** & **ICredentialVerifier.sol**: Interface definitions
+- See `contracts/README.md` for deployment guide and architecture
+
 **Current (MVP)**:
 - Mock wallet connection
 - Simulated credential minting (1.5s delay)
 - localStorage for credential storage
 - Explorer iframe integration
 
-**Production-Ready** (needs real RPC):
+**Production Deployment**:
 - `lib/blockdag.ts` has functions for:
   - `connectWallet()`
   - `getBalance(address)`
@@ -186,6 +207,7 @@ Real calculations based on mock data:
   - `batchMintCredentials()`
 - Smart contract ABI in `contracts/HealthPassport.json`
 - Testnet RPC: `https://api.testnet.blockdag.network`
+- Deploy contracts with Hardhat or Foundry (see contracts/README.md)
 
 ## 🎨 UI/UX Highlights
 

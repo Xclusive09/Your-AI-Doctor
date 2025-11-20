@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Contract deployment scripts (designed for BlockDAG IDE, not main codebase)
+    "contracts/deploy.js",
+    "contracts/blockdag-deploy.js",
+    "contracts/standalone-deploy.js",
+    "contracts/package.json",
   ]),
 ]);
 

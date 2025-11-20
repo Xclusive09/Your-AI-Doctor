@@ -1,0 +1,26 @@
+{
+  "name": "healthpassport-contracts",
+  "version": "1.0.0",
+  "description": "Smart contract deployment scripts for HealthPassport on BlockDAG",
+  "main": "deploy.js",
+  "scripts": {
+    "deploy": "node deploy.js",
+    "deploy:testnet": "node blockdag-deploy.js"
+  },
+  "keywords": [
+    "blockchain",
+    "smart-contract",
+    "blockdag",
+    "web3",
+    "health-passport"
+  ],
+  "author": "Your AI Doctor",
+  "license": "MIT",
+  "dependencies": {
+    "web3": "^4.3.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

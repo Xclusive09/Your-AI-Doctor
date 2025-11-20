@@ -134,6 +134,7 @@ const CONTRACT_ABI = [
 // ═══════════════════════════════════════════════════════════════
 
 let web3Instance: Web3 | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let contractInstance: any = null;
 
 /**
@@ -152,6 +153,7 @@ export function getWeb3(): Web3 {
 export function getContract() {
   if (!contractInstance) {
     const web3 = getWeb3();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     contractInstance = new web3.eth.Contract(CONTRACT_ABI as any, CONTRACT_ADDRESS);
   }
   return contractInstance;
@@ -234,6 +236,7 @@ export async function getCredentialsByOwner(ownerAddress: string): Promise<numbe
   try {
     const contract = getContract();
     const tokenIds = await contract.methods.getCredentialsByOwner(ownerAddress).call();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return tokenIds.map((id: any) => parseInt(id.toString()));
   } catch (error) {
     console.error('Error getting credentials:', error);
@@ -307,11 +310,12 @@ export async function mintSoulbound(
       success: true,
       transactionHash: receipt.transactionHash
     };
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to mint credential';
     console.error('Error minting credential:', error);
     return {
       success: false,
-      error: error.message || 'Failed to mint credential'
+      error: errorMessage
     };
   }
 }

@@ -165,35 +165,57 @@ Interface definition for credential verification functionality.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Deployment Guide
+## 🚀 Quick Deployment Guide
+
+**Want to deploy right now?** 👉 See [QUICKSTART.md](./QUICKSTART.md)
+
+**Need detailed instructions?** 👉 See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+
+### Simple Deployment Process
+
+1. **Compile** contract in BlockDAG IDE
+2. **Copy** ABI and Bytecode
+3. **Run** `standalone-deploy.js` script
+4. **Save** contract address
+5. **Download** ABI to `contracts/HealthPassport.json`
+6. **Update** `.env.local` with contract address
+7. **Install** web3: `npm install web3`
+8. **Test** your integration!
+
+### Files for Deployment
+
+- **`standalone-deploy.js`** - Main deployment script for BlockDAG IDE
+- **`blockdag-deploy.js`** - Alternative deployment script
+- **`deploy.js`** - Local deployment with Node.js
+- **`package.json`** - Dependencies for local deployment
+- **`QUICKSTART.md`** - Step-by-step deployment guide
+- **`DEPLOYMENT_GUIDE.md`** - Comprehensive deployment documentation
 
 ### Prerequisites
 
-1. **Solidity Compiler**: v0.8.20 or higher
-2. **Development Framework**: Hardhat or Foundry
-3. **Node.js**: v18+ (for deployment scripts)
-4. **BlockDAG Testnet Access**: RPC endpoint and funded wallet
-
-### Installation
-
-```bash
-# Install Hardhat
-npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
-
-# Or install Foundry
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-```
+1. **BlockDAG Wallet** with test tokens
+2. **BlockDAG IDE Access** for compilation
+3. **Node.js 18+** (if deploying locally)
+4. **Web3.js** will be installed automatically
 
 ### Compilation
 
-#### Using Hardhat:
+#### Using BlockDAG IDE (Recommended):
+1. Open https://ide.blockdag.network
+2. Upload contract files
+3. Click "Compile"
+4. Copy ABI and Bytecode
+
+#### Using Hardhat (Alternative):
 ```bash
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
 npx hardhat compile
 ```
 
-#### Using Foundry:
+#### Using Foundry (Alternative):
 ```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
 forge build
 ```
 

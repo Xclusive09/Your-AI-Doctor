@@ -17,6 +17,7 @@ export default function Dashboard() {
   const avgSteps = useHealthStore(state => state.getAverageSteps(7))
   const avgSleep = useHealthStore(state => state.getAverageSleep(7))
   const avgHRV = useHealthStore(state => state.getAverageHRV(7))
+  const hasRealData = useHealthStore(state => state.hasRealData)
   
   // Mock user address for demo
   const userAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
@@ -91,7 +92,7 @@ export default function Dashboard() {
       })
       
       toast.success("🎉 200 credentials minted on BlockDAG!")
-    } catch (error) {
+    } catch {
       toast.error("Challenge failed. Please try again.")
     } finally {
       setIsMinting(false)
@@ -104,12 +105,35 @@ export default function Dashboard() {
         {/* Header */}
         <div className="mb-8 space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Welcome back, Alex. You&apos;re crushing it.
+            Welcome back. You&apos;re crushing it.
           </h1>
           <p className="text-gray-400 text-lg">
             Your health journey powered by BlockDAG
           </p>
         </div>
+
+        {/* Demo Data Notice */}
+        {!hasRealData && (
+          <Card className="mb-8 backdrop-blur-sm bg-blue-500/10 border-blue-500/50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Activity className="h-5 w-5 text-blue-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-400 mb-1">
+                    Demo Data Active
+                  </p>
+                  <p className="text-xs text-gray-300">
+                    You&apos;re viewing demo health data. Connect your devices or upload real data from the{' '}
+                    <Link href="/connect" className="text-blue-400 hover:underline font-semibold">
+                      Connect page
+                    </Link>
+                    {' '}to see your actual health metrics.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

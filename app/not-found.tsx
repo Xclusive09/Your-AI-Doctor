@@ -1,20 +1,24 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Home, Heart } from "lucide-react"
 
+const healthJokes = [
+  "Why did the doctor carry a red pen? In case they needed to draw blood! 🩸",
+  "What do you call a doctor who fixes websites? A URLologist! 💻",
+  "Why did the health app go to therapy? It had too many issues to track! 📱",
+  "What's a skeleton's least favorite room? The living room! 💀",
+  "Why don't scientists trust atoms? Because they make up everything, even your body! ⚛️",
+]
+
 export default function NotFound() {
-  const healthJokes = [
-    "Why did the doctor carry a red pen? In case they needed to draw blood! 🩸",
-    "What do you call a doctor who fixes websites? A URLologist! 💻",
-    "Why did the health app go to therapy? It had too many issues to track! 📱",
-    "What's a skeleton's least favorite room? The living room! 💀",
-    "Why don't scientists trust atoms? Because they make up everything, even your body! ⚛️",
-  ]
-  
-  const randomJoke = healthJokes[Math.floor(Math.random() * healthJokes.length)]
+  // Pick a random joke - memoize to avoid re-renders
+  const [randomJoke] = useState(() => 
+    healthJokes[Math.floor(Math.random() * healthJokes.length)]
+  )
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 flex items-center justify-center px-4">

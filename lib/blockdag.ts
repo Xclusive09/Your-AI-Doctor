@@ -11,7 +11,7 @@ export interface HealthCredential {
     name: string
     description: string
     earnedDate: string
-    verificationData?: Record<string, any>
+    verificationData?: Record<string, unknown>
   }
   owner: string
   txHash?: string
@@ -39,7 +39,8 @@ export async function connectWallet(): Promise<string | null> {
 /**
  * Get wallet balance from BlockDAG testnet
  */
-export async function getBalance(address: string): Promise<string> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getBalance(_address: string): Promise<string> {
   try {
     // Mock implementation
     // In production, this would make actual RPC calls

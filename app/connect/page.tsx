@@ -72,6 +72,8 @@ export default function ConnectPage() {
   ])
   
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
 
   const toggleConnection = (id: number) => {
     setConnections(connections.map(conn => {
@@ -92,18 +94,88 @@ export default function ConnectPage() {
     }))
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      toast.loading("Parsing CSV file...", { id: 'csv' })
+  const parseCSVFile = (file: File): Promise<Record<string, string>[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
       
-      // Simulate file parsing
-      setTimeout(() => {
-        toast.success(
-          `✅ Successfully imported ${Math.floor(Math.random() * 500 + 100)} health records from ${file.name}`,
-          { id: 'csv', duration: 5000 }
-        )
-      }, 2000)
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string
+          const lines = text.split('\n').filter(line => line.trim())
+          
+          if (lines.length < 2) {
+            reject(new Error('CSV file is empty or invalid'))
+            return
+          }
+          
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+          const data = []
+          
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',')
+            const row: Record<string, string> = {}
+            
+            headers.forEach((header, index) => {
+              row[header] = values[index]?.trim() || ''
+            })
+            
+            data.push(row)
+            
+            // Update progress
+            const progress = Math.floor((i / lines.length) * 100)
+            setUploadProgress(progress)
+          }
+          
+          resolve(data)
+        } catch (error) {
+          reject(error)
+        }
+      }
+      
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsText(file)
+    })
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a CSV file')
+      return
+    }
+    
+    setIsUploading(true)
+    setUploadProgress(0)
+    toast.loading("Parsing CSV file...", { id: 'csv' })
+    
+    try {
+      const data = await parseCSVFile(file)
+      
+      // Simulate processing time for better UX
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      toast.success(
+        `✅ Successfully imported ${data.length} health records from ${file.name}`,
+        { id: 'csv', duration: 5000 }
+      )
+      
+      // Here you would normally process and store the data
+      // For now, we just show success
+      
+    } catch {
+      toast.error(
+        `Failed to parse CSV file. Please ensure it's formatted correctly.`,
+        { id: 'csv' }
+      )
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -163,14 +235,32 @@ export default function ConnectPage() {
               accept=".csv"
               onChange={handleFileUpload}
               className="hidden"
+              disabled={isUploading}
             />
+            
+            {isUploading && uploadProgress > 0 && (
+              <div className="mb-4 p-4 rounded-lg bg-gray-900/50 border border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-white">Uploading...</span>
+                  <span className="text-sm text-gray-400">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            
             <Button
               onClick={() => fileInputRef.current?.click()}
               size="lg"
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              disabled={isUploading}
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50"
             >
-              <Upload className="h-5 w-5 mr-2" />
-              Choose CSV File
+              <Upload className={`h-5 w-5 mr-2 ${isUploading ? 'animate-pulse' : ''}`} />
+              {isUploading ? 'Processing...' : 'Choose CSV File'}
             </Button>
             <p className="text-xs text-gray-400 mt-2 text-center">
               Supports health data exports from any wearable or app

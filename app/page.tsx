@@ -9,7 +9,6 @@ import {
   Shield, 
   Zap, 
   Award, 
-  TrendingUp, 
   Lock, 
   Users, 
   MessageSquare,

@@ -4,8 +4,13 @@ import { useState, useRef, useEffect, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Send, Bot, User, Loader2, Activity, Heart } from "lucide-react"
+import { Send, Bot, User, Loader2, Activity, Heart, Award } from "lucide-react"
 import { useHealthStore } from "@/store/useHealthStore"
+import { 
+  connectWallet,
+  mintConsultationCredential,
+  type HealthCredential 
+} from "@/lib/blockdag"
 import toast from "react-hot-toast"
 
 interface Message {
@@ -18,6 +23,13 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [userAddress, setUserAddress] = useState<string>("")
+  const [sessionData, setSessionData] = useState({
+    startTime: Date.now(),
+    messageCount: 0,
+    topicsDiscussed: [] as string[],
+    sessionId: Math.random().toString(36).substring(7)
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Get health data for context
@@ -34,6 +46,22 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  // Initialize wallet connection and session
+  useEffect(() => {
+    const initializeChat = async () => {
+      try {
+        const address = await connectWallet()
+        if (address) {
+          setUserAddress(address)
+        }
+      } catch (error) {
+        console.log("Wallet connection optional for chat:", error)
+      }
+    }
+    
+    initializeChat()
+  }, [])
+
   // Proactive health check-in on mount
   useEffect(() => {
     const hasShownWelcome = sessionStorage.getItem('healthbot_welcome_shown')
@@ -44,23 +72,27 @@ export default function ChatPage() {
         const checkInMessage: Message = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: `Hello! 👋 I'm HealthBot, your AI health companion. I've reviewed your recent health data:
+          content: `Hello! 👋 I'm HealthBot, your AI health companion powered by Google Gemini. I've reviewed your recent health data:
 
 📊 **Today's Metrics:**
 - Steps: ${todayMetric.steps.toLocaleString()}
 - Sleep: ${todayMetric.sleepHours}h
 - HRV: ${todayMetric.hrv}ms
 
+${userAddress ? `\n🔗 **Blockchain Connected:** ${userAddress.slice(0,6)}...${userAddress.slice(-4)}` : ''}
+
 ${todayMetric.steps < 5000 ? '⚠️ I notice your activity is low today. Would you like some motivation to get moving?' : ''}
 ${todayMetric.sleepHours < 6 ? '⚠️ You had limited sleep last night. Let me know if you need tips for better rest.' : ''}
 
-How are you feeling today? Is there anything you'd like to discuss about your health?`
+How are you feeling today? Is there anything you'd like to discuss about your health?
+
+💡 *After our consultation, you'll receive a verified AI Consultation credential on the blockchain.*`
         }
         setMessages([checkInMessage])
         sessionStorage.setItem('healthbot_welcome_shown', 'true')
       }, 1000)
     }
-  }, [todayMetric])
+  }, [todayMetric, userAddress])
 
   const buildHealthContext = () => {
     if (!todayMetric) return null
@@ -122,9 +154,21 @@ How are you feeling today? Is there anything you'd like to discuss about your he
 
       setMessages((prev) => [...prev, assistantMessage])
       
+      // Update session data
+      setSessionData(prev => ({
+        ...prev,
+        messageCount: prev.messageCount + 1,
+        topicsDiscussed: [...new Set([...prev.topicsDiscussed, extractTopics(userMessage.content)])]
+      }))
+      
       // Check if response contains danger alerts
       if (data.content && data.content.includes('⚠️ ALERT')) {
         toast.error('Health alert detected! Please review the AI response.', { duration: 5000 })
+      }
+      
+      // Mint consultation credential after meaningful conversation (5+ messages)
+      if (userAddress && sessionData.messageCount >= 4 && sessionData.messageCount % 5 === 0) {
+        mintSessionCredential()
       }
     } catch (error) {
       console.error("Chat error:", error)
@@ -136,6 +180,65 @@ How are you feeling today? Is there anything you'd like to discuss about your he
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const extractTopics = (content: string): string => {
+    // Simple topic extraction based on keywords
+    const healthTopics = [
+      'sleep', 'exercise', 'nutrition', 'stress', 'heart', 'glucose', 'weight', 
+      'mental health', 'anxiety', 'depression', 'headache', 'pain', 'medication',
+      'diet', 'workout', 'symptoms', 'diagnosis', 'prevention'
+    ]
+    
+    const mentioned = healthTopics.filter(topic => 
+      content.toLowerCase().includes(topic)
+    )
+    
+    return mentioned.length > 0 ? mentioned[0] : 'general health'
+  }
+
+  const mintSessionCredential = async () => {
+    if (!userAddress) return
+    
+    try {
+      const consultationType = sessionData.topicsDiscussed.length > 0 
+        ? sessionData.topicsDiscussed[0] 
+        : 'general consultation'
+      
+      const duration = Math.floor((Date.now() - sessionData.startTime) / 1000 / 60) // minutes
+      
+      toast.loading("Minting AI consultation credential...", { id: 'mint-consultation' })
+      
+      const credential = await mintConsultationCredential(
+        userAddress,
+        consultationType,
+        {
+          duration,
+          topicsDiscussed: sessionData.topicsDiscussed,
+          recommendations: ['Follow up with healthcare provider if symptoms persist'],
+          sessionId: sessionData.sessionId
+        }
+      )
+      
+      if (credential) {
+        toast.success(
+          "🎉 AI Consultation credential minted on blockchain!",
+          { id: 'mint-consultation', duration: 5000 }
+        )
+        
+        // Add system message about credential
+        const credentialMessage: Message = {
+          id: 'credential-' + Date.now(),
+          role: 'assistant',
+          content: `🏆 **Consultation Credential Earned!**\n\nI've issued you a verified AI Health Consultation credential on the BlockDAG blockchain for this session.\n\n📋 **Session Summary:**\n- Duration: ${Math.floor((Date.now() - sessionData.startTime) / 1000 / 60)} minutes\n- Topics: ${sessionData.topicsDiscussed.join(', ') || 'General health'}\n- Messages: ${sessionData.messageCount}\n- Token ID: ${credential.tokenId}\n\nThis credential proves you received personalized AI health guidance and can be verified on the blockchain.`
+        }
+        
+        setMessages(prev => [...prev, credentialMessage])
+      }
+    } catch (error) {
+      console.error('Error minting consultation credential:', error)
+      toast.error("Failed to mint consultation credential", { id: 'mint-consultation' })
     }
   }
 
@@ -158,18 +261,28 @@ How are you feeling today? Is there anything you'd like to discuss about your he
                 Personalized health advice powered by your real-time data
               </p>
             </div>
-            {todayMetric && (
-              <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-4">
+              {todayMetric && (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Activity className="h-4 w-4 text-green-400" />
+                    <span className="text-gray-300">{todayMetric.steps.toLocaleString()} steps</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Heart className="h-4 w-4 text-red-400" />
+                    <span className="text-gray-300">{todayMetric.hrv}ms HRV</span>
+                  </div>
+                </>
+              )}
+              {userAddress && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Activity className="h-4 w-4 text-green-400" />
-                  <span className="text-gray-300">{todayMetric.steps.toLocaleString()} steps</span>
+                  <Award className="h-4 w-4 text-yellow-400" />
+                  <span className="text-gray-300">
+                    {Math.floor(sessionData.messageCount / 5)} credentials earned
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Heart className="h-4 w-4 text-red-400" />
-                  <span className="text-gray-300">{todayMetric.hrv}ms HRV</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

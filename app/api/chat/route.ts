@@ -114,7 +114,85 @@ ${healthContextPrompt}
 
 ${dangerAnalysis.isDangerous ? `\n**🚨 URGENT HEALTH ALERTS:**\n${dangerAnalysis.alerts.join('\n')}\n\nPrioritize addressing these concerns in your response.` : ''}`;
 
-    // Check if Anthropic API key is configured
+    // Check for Gemini API key first (preferred)
+    if (process.env.GOOGLE_GEMINI_API_KEY) {
+      try {
+        // Prepare messages for Gemini format
+        const conversationHistory = messages
+          .map((m: { role: string; content: string }) => {
+            const role = m.role === 'assistant' ? 'model' : 'user'
+            return `${role}: ${m.content}`
+          })
+          .join('\n\n')
+
+        const prompt = `${systemPrompt}
+
+Previous conversation:
+${conversationHistory}
+
+user: ${messages[messages.length - 1]?.content || ''}
+
+Please respond as the AI Health Doctor:`
+
+        // Call Gemini API with Pro 1.5 model (most stable and widely available)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: prompt
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1500,
+            },
+            safetySettings: [
+              {
+                category: "HARM_CATEGORY_HARASSMENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_HATE_SPEECH", 
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              }
+            ]
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
+          
+          // Prepend danger alerts if present
+          if (dangerAnalysis.isDangerous) {
+            content = dangerAnalysis.alerts.join('\n\n') + '\n\n' + content
+          }
+          
+          return Response.json({ role: 'assistant', content });
+        } else {
+          console.error('Gemini API error:', response.status, await response.text());
+        }
+      } catch (apiError) {
+        console.error('Gemini API error:', apiError);
+        // Fall through to Anthropic backup
+      }
+    }
+
+    // Fallback to Anthropic if Gemini fails
     if (process.env.ANTHROPIC_API_KEY) {
       try {
         // Call Anthropic API directly
@@ -153,7 +231,7 @@ ${dangerAnalysis.isDangerous ? `\n**🚨 URGENT HEALTH ALERTS:**\n${dangerAnalys
       }
     }
 
-    // If API key not configured, return helpful error message
+    // If no API key configured, return helpful error message
     const errorResponse = `I apologize, but I need to be configured with an AI API key to provide personalized health advice. 
 
 However, I can still help! Here's what you should know:
@@ -177,7 +255,10 @@ ${healthContext ? `
 
 **⚠️ Disclaimer:** I'm an AI assistant providing general health information. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.
 
-To enable full AI capabilities, please configure the ANTHROPIC_API_KEY environment variable.`;
+🔧 **To enable full AI capabilities, configure one of these API keys:**
+- GOOGLE_GEMINI_API_KEY (recommended for healthcare)
+- ANTHROPIC_API_KEY (Claude alternative)
+- OPENAI_API_KEY (GPT alternative)`;
 
     return Response.json({
       role: 'assistant',

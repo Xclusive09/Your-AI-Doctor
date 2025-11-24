@@ -1,13 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Award, Check, Lock, Heart, Footprints, Moon, Zap, Shield, Trophy, Target, Download, Share2, Copy } from "lucide-react"
 import { useHealthStore } from "@/store/useHealthStore"
 import { useAuthStore } from "@/store/useAuthStore"
-import { mintHealthCredential, storeCredential, getTxExplorerUrl } from "@/lib/blockdag"
+import { 
+  mintHealthCredential, 
+  storeCredential, 
+  getTxExplorerUrl,
+  connectWallet,
+  getTokenBalance,
+  getCredentialsForAddress,
+  verifyCredential,
+  type HealthCredential
+} from "@/lib/blockdag"
 import { downloadBadgeImage, copyShareLink, shareBadgeNative, generateShareText } from "@/lib/badgeGenerator"
 import toast from "react-hot-toast"
 import confetti from "canvas-confetti"
@@ -19,8 +28,50 @@ export default function CredentialsPage() {
   const checkBadgeEligibility = useHealthStore(state => state.checkBadgeEligibility)
   const { user } = useAuthStore()
   
-  // Mock user address
-  const userAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+  // Use connected wallet address or fallback
+  const [userAddress, setUserAddress] = useState<string>("")
+  const [tokenBalance, setTokenBalance] = useState<number>(0)
+  const [existingCredentials, setExistingCredentials] = useState<HealthCredential[]>([])
+  
+  useEffect(() => {
+    // Try to get connected wallet address
+    const getWalletAddress = async () => {
+      try {
+        const address = await connectWallet()
+        if (address) {
+          setUserAddress(address)
+          
+          // Load blockchain data
+          const balance = await getTokenBalance(address)
+          setTokenBalance(balance)
+          
+          const credentials = await getCredentialsForAddress(address)
+          setExistingCredentials(credentials)
+        }
+      } catch {
+        // Fallback to mock address
+        setUserAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+      }
+    }
+    getWalletAddress()
+  }, [])
+  
+  // Verify credential function
+  const handleVerifyCredential = async (tokenId: string) => {
+    toast.loading("Verifying credential on blockchain...", { id: 'verify' })
+    
+    try {
+      const isValid = await verifyCredential(tokenId)
+      
+      if (isValid) {
+        toast.success("✅ Credential is valid and verified!", { id: 'verify' })
+      } else {
+        toast.error("❌ Credential verification failed", { id: 'verify' })
+      }
+    } catch {
+      toast.error("Failed to verify credential", { id: 'verify' })
+    }
+  }
   
   const credentials = [
     {
@@ -208,12 +259,84 @@ export default function CredentialsPage() {
           </p>
         </div>
 
-        {/* Stats Card */}
+        {/* Blockchain Stats Card */}
         <Card className="mb-8 backdrop-blur-sm bg-gray-800/50 border-gray-700 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl text-white">Badge Collection</CardTitle>
+                <CardTitle className="text-2xl text-white">Health Passport Status</CardTitle>
+                <CardDescription className="mt-2 text-gray-400">
+                  Your blockchain-verified health credentials
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-cyan-400">{tokenBalance}</div>
+                <div className="text-sm text-gray-400">Total Credentials</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-gray-700/50 rounded-lg">
+                <div className="text-xl font-bold text-green-400">{existingCredentials.length}</div>
+                <div className="text-sm text-gray-400">Earned Credentials</div>
+              </div>
+              <div className="text-center p-4 bg-gray-700/50 rounded-lg">
+                <div className="text-xl font-bold text-blue-400">{userAddress ? `${userAddress.slice(0,6)}...${userAddress.slice(-4)}` : 'Not Connected'}</div>
+                <div className="text-sm text-gray-400">Wallet Address</div>
+              </div>
+              <div className="text-center p-4 bg-gray-700/50 rounded-lg">
+                <div className="text-xl font-bold text-purple-400">{claimedBadges.size}</div>
+                <div className="text-sm text-gray-400">Session Claims</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Existing Credentials Section */}
+        {existingCredentials.length > 0 && (
+          <Card className="mb-8 backdrop-blur-sm bg-gray-800/50 border-gray-700 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl text-white">Your Verified Credentials</CardTitle>
+              <CardDescription className="text-gray-400">
+                Blockchain-verified health achievements
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {existingCredentials.map((cred) => (
+                  <div key={cred.tokenId} className="p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-white">{cred.metadata.name}</h3>
+                      <Badge variant="secondary" className="bg-green-600/20 text-green-400">
+                        ✓ Verified
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-400 mb-3">{cred.metadata.description}</p>
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      <span>Token #{cred.tokenId}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerifyCredential(cred.tokenId)}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Verify
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Badge Collection */}
+        <Card className="mb-8 backdrop-blur-sm bg-gray-800/50 border-gray-700 shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl text-white">Available Badges</CardTitle>
                 <CardDescription className="mt-2 text-gray-400">
                   Earn badges by achieving health milestones
                 </CardDescription>

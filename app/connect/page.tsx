@@ -4,10 +4,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Watch, Activity, Scale, Check, Plus, Upload, FileSpreadsheet } from "lucide-react"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import toast from "react-hot-toast"
+import { 
+  connectWallet, 
+  mintDataConnectionCredential,
+  getCredentialsForAddress,
+  type HealthCredential 
+} from "@/lib/blockdag"
 
 export default function ConnectPage() {
+  const [userAddress, setUserAddress] = useState<string>("")
+  const [connectionCredentials, setConnectionCredentials] = useState<HealthCredential[]>([])
+  
+  useEffect(() => {
+    // Get wallet address and load connection credentials
+    const initializeWallet = async () => {
+      try {
+        const address = await connectWallet()
+        if (address) {
+          setUserAddress(address)
+          
+          // Load existing connection credentials
+          const credentials = await getCredentialsForAddress(address)
+          const connectionCreds = credentials.filter(cred => 
+            cred.metadata.category === 'data-connection'
+          )
+          setConnectionCredentials(connectionCreds)
+        }
+      } catch (error) {
+        console.log("Wallet connection failed:", error)
+      }
+    }
+    initializeWallet()
+  }, [])
+  
   const [connections, setConnections] = useState([
     {
       id: 1,
@@ -75,10 +106,19 @@ export default function ConnectPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
 
-  const toggleConnection = (id: number) => {
+  const toggleConnection = async (id: number) => {
+    const connection = connections.find(conn => conn.id === id)
+    if (!connection) return
+    
     setConnections(connections.map(conn => {
       if (conn.id === id) {
         const newConnected = !conn.connected
+        
+        // Mint blockchain credential when connecting
+        if (newConnected && userAddress) {
+          mintConnectionCredential(connection)
+        }
+        
         if (newConnected) {
           toast.success(`✅ ${conn.name} connected successfully!`)
         } else {
@@ -92,6 +132,37 @@ export default function ConnectPage() {
       }
       return conn
     }))
+  }
+  
+  const mintConnectionCredential = async (connection: typeof connections[0]) => {
+    if (!userAddress) return
+    
+    try {
+      toast.loading("Minting data connection credential...", { id: 'mint-connection' })
+      
+      const credential = await mintDataConnectionCredential(
+        userAddress,
+        connection.name,
+        {
+          name: connection.name,
+          description: connection.description,
+          metrics: connection.metrics,
+          connectedAt: new Date().toISOString()
+        }
+      )
+      
+      if (credential) {
+        setConnectionCredentials(prev => [...prev, credential])
+        toast.success(
+          `🎉 ${connection.name} connection credential minted!`,
+          { id: 'mint-connection' }
+        )
+      } else {
+        toast.error("Failed to mint connection credential", { id: 'mint-connection' })
+      }
+    } catch (error) {
+      toast.error("Error minting credential", { id: 'mint-connection' })
+    }
   }
 
   const parseCSVFile = (file: File): Promise<Record<string, string>[]> => {

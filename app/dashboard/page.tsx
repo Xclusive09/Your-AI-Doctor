@@ -1,26 +1,65 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Activity, Heart, TrendingUp, Zap, Award, Users, Flame, Target, Moon, Droplets } from "lucide-react"
 import Link from "next/link"
 import { useHealthStore } from "@/store/useHealthStore"
-import { batchMintCredentials, getExplorerUrl } from "@/lib/blockdag"
+import { 
+  batchMintCredentials, 
+  getExplorerUrl,
+  connectWallet,
+  getTokenBalance,
+  getTotalSupply,
+  getCredentialsForAddress
+} from "@/lib/blockdag"
 import toast from "react-hot-toast"
 import confetti from "canvas-confetti"
 
 export default function Dashboard() {
   const [isMinting, setIsMinting] = useState(false)
   const [mintCount, setMintCount] = useState(0)
+  const [userAddress, setUserAddress] = useState<string>("")
+  const [blockchainStats, setBlockchainStats] = useState({
+    userCredentials: 0,
+    totalNetworkCredentials: 0,
+    walletConnected: false
+  })
+  
   const todayMetric = useHealthStore(state => state.getTodayMetric())
   const avgSteps = useHealthStore(state => state.getAverageSteps(7))
   const avgSleep = useHealthStore(state => state.getAverageSleep(7))
   const avgHRV = useHealthStore(state => state.getAverageHRV(7))
   const hasRealData = useHealthStore(state => state.hasRealData)
   
-  // Mock user address for demo
-  const userAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+  useEffect(() => {
+    // Initialize blockchain connection
+    const initializeBlockchain = async () => {
+      try {
+        const address = await connectWallet()
+        if (address) {
+          setUserAddress(address)
+          
+          // Load blockchain statistics
+          const userBalance = await getTokenBalance(address)
+          const totalSupply = await getTotalSupply()
+          
+          setBlockchainStats({
+            userCredentials: userBalance,
+            totalNetworkCredentials: totalSupply,
+            walletConnected: true
+          })
+        }
+      } catch (error) {
+        console.log("Blockchain initialization failed:", error)
+        // Fallback to mock address
+        setUserAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+      }
+    }
+    
+    initializeBlockchain()
+  }, [])
   
   const stats = [
     {
@@ -110,6 +149,71 @@ export default function Dashboard() {
           <p className="text-gray-600 dark:text-gray-400 text-lg">
             Your health journey powered by BlockDAG
           </p>
+          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <span className={`flex items-center gap-2 ${blockchainStats.walletConnected ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`w-2 h-2 rounded-full ${blockchainStats.walletConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              {blockchainStats.walletConnected ? 'Blockchain Connected' : 'Blockchain Disconnected'}
+            </span>
+            {userAddress && (
+              <span>
+                Address: {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Blockchain Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Your Credentials
+              </CardTitle>
+              <Award className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {blockchainStats.userCredentials}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Verified on BlockDAG
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Network Total
+              </CardTitle>
+              <Users className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                {blockchainStats.totalNetworkCredentials}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Global credentials issued
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Session Progress
+              </CardTitle>
+              <Flame className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                {mintCount}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Credentials minted today
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Demo Data Notice */}

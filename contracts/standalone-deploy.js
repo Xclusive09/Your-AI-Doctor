@@ -1,41 +1,11 @@
-/**
- * ═══════════════════════════════════════════════════════════════
- *  STANDALONE BLOCKDAG DEPLOYMENT SCRIPT
- *  For HealthPassport Smart Contract
- * ═══════════════════════════════════════════════════════════════
- * 
- * COPY THIS ENTIRE FILE AND PASTE IT INTO BLOCKDAG IDE
- * 
- * HOW TO USE:
- * 
- * 1. In BlockDAG IDE, compile HealthPassport.sol
- * 2. Copy the ABI and Bytecode from compilation output
- * 3. Paste ABI into CONTRACT_ABI below (line ~50)
- * 4. Paste Bytecode into CONTRACT_BYTECODE below (line ~55)
- * 5. Update YOUR_PRIVATE_KEY with your wallet key (line ~25)
- * 6. Run this script in BlockDAG IDE
- * 7. Copy the contract address from the output
- * 8. Save the ABI to contracts/HealthPassport.json in your project
- * 
- * ═══════════════════════════════════════════════════════════════
- */
-
-// ═══════════════════════════════════════════════════════════════
-// STEP 1: UPDATE YOUR CONFIGURATION
-// ═══════════════════════════════════════════════════════════════
 
 const YOUR_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000000';
-// ⚠️  REPLACE WITH YOUR ACTUAL PRIVATE KEY (keep this secure!)
 
 const RPC_URL = 'https://rpc.testnet.blockdag.network';
-// Update if BlockDAG provides a different RPC endpoint
 
 const GAS_LIMIT = 5000000;
 const GAS_PRICE = '20000000000'; // 20 Gwei
 
-// ═══════════════════════════════════════════════════════════════
-// STEP 2: PASTE YOUR CONTRACT ABI (from BlockDAG IDE compilation)
-// ═══════════════════════════════════════════════════════════════
 
 const CONTRACT_ABI = [
   // ⚠️  PASTE YOUR ABI HERE

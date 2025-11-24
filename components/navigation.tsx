@@ -8,10 +8,12 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { useState, useEffect, useRef } from "react"
 
 const navItems = [
-  { href: "/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/", icon: Home, label: "Dashboard" },
   { href: "/chat", icon: MessageSquare, label: "AI Chat" },
   { href: "/credentials", icon: Award, label: "Credentials" },
   { href: "/connect", icon: LinkIcon, label: "Connect" },
+  // Development test page - remove in production
+  ...(process.env.NODE_ENV === 'development' ? [{ href: "/test", icon: Settings, label: "Test" }] : []),
 ]
 
 export function Navigation() {

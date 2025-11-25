@@ -28,7 +28,7 @@ export default function ConnectPage() {
           // Load existing connection credentials
           const credentials = await getCredentialsForAddress(address)
           const connectionCreds = credentials.filter(cred => 
-            cred.metadata.category === 'data-connection'
+            cred.badgeType === 'data_connection'
           )
           setConnectionCredentials(connectionCreds)
         }

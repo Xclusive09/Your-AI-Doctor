@@ -28,7 +28,7 @@ export default function ConnectPage() {
           // Load existing connection credentials
           const credentials = await getCredentialsForAddress(address)
           const connectionCreds = credentials.filter(cred => 
-            cred.metadata.category === 'data-connection'
+            cred.badgeType === 'data_connection'
           )
           setConnectionCredentials(connectionCreds)
         }
@@ -160,7 +160,7 @@ export default function ConnectPage() {
       } else {
         toast.error("Failed to mint connection credential", { id: 'mint-connection' })
       }
-    } catch (error) {
+    } catch {
       toast.error("Error minting credential", { id: 'mint-connection' })
     }
   }
@@ -307,6 +307,7 @@ export default function ConnectPage() {
               onChange={handleFileUpload}
               className="hidden"
               disabled={isUploading}
+              title="Upload CSV file with health data"
             />
             
             {isUploading && uploadProgress > 0 && (
@@ -318,7 +319,7 @@ export default function ConnectPage() {
                 <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
+                    style={{ width: `${uploadProgress}%` } as React.CSSProperties}
                   />
                 </div>
               </div>

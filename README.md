@@ -55,7 +55,7 @@ A production-ready, privacy-first AI doctor and verifiable health passport power
 - **Styling**: Tailwind CSS v4
 - **UI Components**: shadcn/ui
 - **Icons**: Lucide React
-- **AI**: Vercel AI SDK with Claude 3.5 Sonnet (Anthropic)
+- **AI**: Google Gemini 2.0 Flash (primary), with Claude 3.5 Sonnet fallback
 - **State Management**: Zustand
 - **Blockchain**: BlockDAG testnet integration
 - **Animations**: canvas-confetti

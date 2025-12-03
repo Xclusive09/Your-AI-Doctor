@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { Send, Bot, User, Loader2, Activity, Heart, Award } from "lucide-react"
 import { useHealthStore } from "@/store/useHealthStore"
 import { 
@@ -72,7 +73,7 @@ export default function ChatPage() {
         const checkInMessage: Message = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: `Hello! 👋 I'm HealthBot, your AI health companion powered by Google Gemini. I've reviewed your recent health data:
+          content: `Hello! 👋 I'm HealthBot, your AI health companion powered by Google Gemini 2.5 Flash. I've reviewed your recent health data:
 
 📊 **Today's Metrics:**
 - Steps: ${todayMetric.steps.toLocaleString()}
@@ -340,7 +341,11 @@ How are you feeling today? Is there anything you'd like to discuss about your he
                     : "backdrop-blur-sm bg-gray-800/80 border-gray-700 text-white"
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                {message.role === "user" ? (
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                ) : (
+                  <MarkdownRenderer content={message.content} />
+                )}
               </Card>
 
               {message.role === "user" && (

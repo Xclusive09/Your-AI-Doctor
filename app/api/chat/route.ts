@@ -81,6 +81,10 @@ export async function POST(req: Request) {
   try {
     const { messages, healthContext } = await req.json();
 
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return Response.json({ error: 'Invalid or empty messages array' }, { status: 400 });
+    }
+
     // Detect dangerous health metrics
     const dangerAnalysis = healthContext ? detectDangerousMetrics(healthContext) : { isDangerous: false, alerts: [] }
     
@@ -114,77 +118,122 @@ ${healthContextPrompt}
 
 ${dangerAnalysis.isDangerous ? `\n**🚨 URGENT HEALTH ALERTS:**\n${dangerAnalysis.alerts.join('\n')}\n\nPrioritize addressing these concerns in your response.` : ''}`;
 
-    // Check for Gemini API key first (preferred)
+    // Check for no API keys early
+    if (!process.env.GOOGLE_GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+      const errorResponse = `I apologize, but I need to be configured with an AI API key to provide personalized health advice. 
+
+However, I can still help! Here's what you should know:
+
+**🚨 Important Health Alerts:**
+${dangerAnalysis.isDangerous ? dangerAnalysis.alerts.join('\n\n') : 'No immediate health concerns detected from your metrics.'}
+
+**Your Health Summary:**
+${healthContext ? `
+- Activity: ${healthContext.todaySteps?.toLocaleString() || 'N/A'} steps today
+- Sleep: ${healthContext.todaySleep || 'N/A'} hours last night
+- Heart Health: ${healthContext.currentHRV || 'N/A'} ms HRV
+` : 'Connect your devices to see your health data here.'}
+
+**General Recommendations:**
+1. Maintain regular physical activity (150 min/week moderate exercise)
+2. Prioritize 7-9 hours of quality sleep
+3. Stay hydrated (8 glasses of water daily)
+4. Eat a balanced diet with fruits, vegetables, and lean proteins
+5. Manage stress through mindfulness and relaxation techniques
+
+**⚠️ Disclaimer:** I'm an AI assistant providing general health information. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.
+
+🔧 **To enable full AI capabilities, configure one of these API keys:**
+- GOOGLE_GEMINI_API_KEY (recommended for healthcare)
+- ANTHROPIC_API_KEY (Claude alternative)
+- OPENAI_API_KEY (GPT alternative)`;
+
+      return Response.json({
+        role: 'assistant',
+        content: errorResponse
+      });
+    }
+
+    // Prefer Gemini API (specifically 2.5-flash as primary)
     if (process.env.GOOGLE_GEMINI_API_KEY) {
       try {
         // Prepare messages for Gemini format
-        const conversationHistory = messages
-          .map((m: { role: string; content: string }) => {
-            const role = m.role === 'assistant' ? 'model' : 'user'
-            return `${role}: ${m.content}`
-          })
-          .join('\n\n')
+        const geminiMessages = messages.map((m: { role: string; content: string }) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
 
-        const prompt = `${systemPrompt}
+        const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        let geminiResponse = null;
+        let lastError = null;
 
-Previous conversation:
-${conversationHistory}
-
-user: ${messages[messages.length - 1]?.content || ''}
-
-Please respond as the AI Health Doctor:`
-
-        // Call Gemini API with Pro 1.5 model (most stable and widely available)
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: prompt
-              }]
-            }],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 1500,
-            },
-            safetySettings: [
-              {
-                category: "HARM_CATEGORY_HARASSMENT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        for (const model of geminiModels) {
+          try {
+            console.log(`Trying Gemini model: ${model}`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
               },
-              {
-                category: "HARM_CATEGORY_HATE_SPEECH", 
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-              },
-              {
-                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-              },
-              {
-                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-              }
-            ]
-          }),
-        });
+              signal: controller.signal,
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: systemPrompt }]
+                },
+                contents: geminiMessages,
+                generationConfig: {
+                  temperature: 0.7,
+                  topK: 40,
+                  topP: 0.95,
+                  maxOutputTokens: 2048,
+                },
+                safetySettings: [
+                  {
+                    category: "HARM_CATEGORY_HARASSMENT",
+                    threshold: "BLOCK_ONLY_HIGH"
+                  },
+                  {
+                    category: "HARM_CATEGORY_HATE_SPEECH", 
+                    threshold: "BLOCK_ONLY_HIGH"
+                  },
+                  {
+                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold: "BLOCK_ONLY_HIGH"
+                  },
+                  {
+                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold: "BLOCK_ONLY_HIGH"
+                  }
+                ]
+              }),
+            });
+            
+            clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const data = await response.json();
-          let content = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
-          
-          // Prepend danger alerts if present
-          if (dangerAnalysis.isDangerous) {
-            content = dangerAnalysis.alerts.join('\n\n') + '\n\n' + content
+            if (response.ok) {
+              geminiResponse = await response.json();
+              console.log(`Successfully got response from ${model}`);
+              break;
+            } else {
+              const errorText = await response.text();
+              console.error(`Gemini ${model} error:`, response.status, errorText);
+              lastError = `${model}: ${response.status} - ${errorText}`;
+            }
+          } catch (modelError) {
+            console.error(`Gemini ${model} failed:`, modelError);
+            lastError = modelError;
           }
+        }
+
+        if (geminiResponse) {
+          const content = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Sorry, I could not generate a response.';
           
           return Response.json({ role: 'assistant', content });
         } else {
-          console.error('Gemini API error:', response.status, await response.text());
+          console.error('All Gemini models failed. Last error:', lastError);
         }
       } catch (apiError) {
         console.error('Gemini API error:', apiError);
@@ -216,12 +265,7 @@ Please respond as the AI Health Doctor:`
 
         if (response.ok) {
           const data = await response.json();
-          let content = data.content[0]?.text || 'Sorry, I could not generate a response.';
-          
-          // Prepend danger alerts if present
-          if (dangerAnalysis.isDangerous) {
-            content = dangerAnalysis.alerts.join('\n\n') + '\n\n' + content
-          }
+          const content = data.content[0]?.text?.trim() || 'Sorry, I could not generate a response.';
           
           return Response.json({ role: 'assistant', content });
         }
@@ -231,8 +275,8 @@ Please respond as the AI Health Doctor:`
       }
     }
 
-    // If no API key configured, return helpful error message
-    const errorResponse = `I apologize, but I need to be configured with an AI API key to provide personalized health advice. 
+    // If we reach here, both APIs failed - return error response
+    const errorResponse = `I apologize, but I'm having trouble connecting to my AI providers right now. 
 
 However, I can still help! Here's what you should know:
 
@@ -253,12 +297,7 @@ ${healthContext ? `
 4. Eat a balanced diet with fruits, vegetables, and lean proteins
 5. Manage stress through mindfulness and relaxation techniques
 
-**⚠️ Disclaimer:** I'm an AI assistant providing general health information. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.
-
-🔧 **To enable full AI capabilities, configure one of these API keys:**
-- GOOGLE_GEMINI_API_KEY (recommended for healthcare)
-- ANTHROPIC_API_KEY (Claude alternative)
-- OPENAI_API_KEY (GPT alternative)`;
+**⚠️ Disclaimer:** I'm an AI assistant providing general health information. For medical advice, diagnosis, or treatment, please consult with qualified healthcare professionals.`;
 
     return Response.json({
       role: 'assistant',

@@ -729,7 +729,7 @@ export async function mintConsultationCredential(
         verificationData: {
           consultationType,
           sessionDate: new Date().toISOString(),
-          aiProvider: 'Google Gemini',
+          aiProvider: 'Google Gemini 2.5 Flash',
           ...sessionData
         }
       }

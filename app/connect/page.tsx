@@ -52,7 +52,10 @@ export default function ConnectPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
-
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const provider = params.get('provider')
+  const redirectUri = params.get('redirectUri') || `${window.location.origin}/api/oauth/callback/google`  // fallback
   // Initialize wallet and check connection statuses
   useEffect(() => {
     const initialize = async () => {
@@ -132,7 +135,7 @@ export default function ConnectPage() {
         toast.loading(`Completing ${provider} connection...`, { id: 'oauth' })
         
         try {
-          const tokens = await exchangeCodeForToken(provider, code)
+          const tokens = await exchangeCodeForToken(provider, code, redirectUri)
           if (tokens) {
             // Update device status
             setDevices(prev => prev.map(d => 
@@ -151,10 +154,12 @@ export default function ConnectPage() {
             
             toast.success(`✅ ${provider} connected successfully!`, { id: 'oauth' })
           } else {
-            toast.error('Failed to complete connection', { id: 'oauth' })
+            toast.error('Failed to complete connection. Check console for details.', { id: 'oauth' })
           }
-        } catch {
-          toast.error('Connection error', { id: 'oauth' })
+        } catch (err) {
+          console.error('OAuth connection error:', err)
+          const errorMessage = err instanceof Error ? err.message : 'Connection error'
+          toast.error(`Connection error: ${errorMessage}`, { id: 'oauth' })
         } finally {
           setIsLoading(prev => ({ ...prev, [provider]: false }))
           // Clean URL

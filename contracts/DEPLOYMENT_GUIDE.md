@@ -278,8 +278,6 @@ Add Web3.js to your package.json:
 
 ```bash
 npm install web3
-# or
-pnpm add web3
 ```
 
 ### Step 5: Use in Your Components

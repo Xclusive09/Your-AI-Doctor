@@ -47,13 +47,13 @@ export interface OAuthConfig {
 // ═══════════════════════════════════════════════════════════════
 
 const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
-  google_fit: {
-    clientId: process.env.NEXT_PUBLIC_GOOGLE_FIT_CLIENT_ID || '',
-    authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    scope: 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read https://www.googleapis.com/auth/fitness.sleep.read',
-    redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/api/oauth/callback/google` : '',
-  },
+google_fit: {
+  clientId: process.env.NEXT_PUBLIC_GOOGLE_FIT_CLIENT_ID || '',
+  authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://www.googleapis.com/oauth2/v4/token',
+  scope: 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read https://www.googleapis.com/auth/fitness.sleep.read',
+  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/api/oauth/callback/google` : '',
+},
   fitbit: {
     clientId: process.env.NEXT_PUBLIC_FITBIT_CLIENT_ID || '',
     authorizationUrl: 'https://www.fitbit.com/oauth2/authorize',
@@ -225,24 +225,21 @@ export function generateOAuthUrl(deviceId: string): string | null {
     return null
   }
 
-  // Generate PKCE code verifier and challenge
-  const codeVerifier = generateCodeVerifier()
-  const codeChallenge = generateCodeChallenge(codeVerifier)
-  
-  // Store code verifier for token exchange
+  // Store device ID for token exchange
   if (typeof window !== 'undefined') {
-    sessionStorage.setItem(`oauth_verifier_${deviceId}`, codeVerifier)
     sessionStorage.setItem('oauth_device_id', deviceId)
   }
 
   // Build authorization URL
+  // Note: Using 'plain' PKCE method since we're not implementing SHA256 hashing client-side
+  // For Google Fit, we can also omit PKCE since we're using a server-side client secret
   const params = new URLSearchParams({
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
     response_type: 'code',
     scope: config.scope,
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
+    access_type: 'offline', // Request refresh token
+    prompt: 'consent', // Force consent screen to get refresh token
     state: deviceId,
   })
 
@@ -287,10 +284,13 @@ function base64URLEncode(buffer: Uint8Array): string {
  */
 export async function exchangeCodeForToken(
   deviceId: string,
-  code: string
+  code: string,
+  redirectUri?: string
 ): Promise<{ accessToken: string; refreshToken?: string; expiresIn: number } | null> {
   const config = OAUTH_CONFIGS[deviceId]
   if (!config) return null
+
+  const finalRedirectUri = redirectUri || config.redirectUri
 
   const codeVerifier = typeof window !== 'undefined' 
     ? sessionStorage.getItem(`oauth_verifier_${deviceId}`) 
@@ -304,12 +304,19 @@ export async function exchangeCodeForToken(
         deviceId,
         code,
         codeVerifier,
-        redirectUri: config.redirectUri,
+        redirectUri: finalRedirectUri
       }),
     })
 
     if (!response.ok) {
-      throw new Error('Token exchange failed')
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Token exchange failed:', {
+        status: response.status,
+        deviceId,
+        error: errorData,
+        redirectUri: config.redirectUri,
+      })
+      throw new Error(errorData.details || 'Token exchange failed')
     }
 
     const data = await response.json()

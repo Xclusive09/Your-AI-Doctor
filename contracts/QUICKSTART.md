@@ -94,8 +94,6 @@ Follow these steps to deploy your smart contract and integrate it with your app.
 
 ```bash
 npm install web3
-# or
-pnpm add web3
 ```
 
 ### Step 6: Update the Web3 Client
@@ -113,8 +111,6 @@ pnpm add web3
 1. Start the development server:
    ```bash
    npm run dev
-   # or
-   pnpm dev
    ```
 
 2. Open http://localhost:3000

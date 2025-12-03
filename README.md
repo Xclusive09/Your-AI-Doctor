@@ -66,7 +66,6 @@ A production-ready, privacy-first AI doctor and verifiable health passport power
 
 ### Prerequisites
 - Node.js 18+
-- pnpm (install globally: `npm install -g pnpm`)
 
 ### One-Click Deploy
 
@@ -84,7 +83,7 @@ cd Your-AI-Doctor
 
 2. **Install dependencies**:
 ```bash
-pnpm install
+npm install
 ```
 
 3. **Configure environment** (Optional):
@@ -95,20 +94,18 @@ cp .env.example .env.local
 
 4. **Run the development server**:
 ```bash
-pnpm dev
+npm run dev
 ```
 
 5. **Open [http://localhost:3000](http://localhost:3000)**
 
 The app works with mock data by default. For full AI streaming, add your Anthropic API key to `.env.local`.
 
-> **Note**: This project uses pnpm for package management. Make sure you have pnpm installed globally.
-
 ### Build for Production
 
 ```bash
-pnpm build
-pnpm start
+npm run build
+npm start
 ```
 
 ## 📁 Project Structure

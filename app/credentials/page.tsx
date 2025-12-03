@@ -46,7 +46,11 @@ export default function CredentialsPage() {
           setTokenBalance(balance)
           
           const credentials = await getCredentialsForAddress(address)
-          setExistingCredentials(credentials)
+          // Deduplicate credentials by tokenId
+          const uniqueCredentials = credentials.filter((cred, index, self) => 
+            index === self.findIndex(c => c.tokenId === cred.tokenId)
+          )
+          setExistingCredentials(uniqueCredentials)
         }
       } catch {
         // Fallback to mock address
@@ -304,8 +308,8 @@ export default function CredentialsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {existingCredentials.map((cred) => (
-                  <div key={cred.tokenId} className="p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                {existingCredentials.map((cred, index) => (
+                  <div key={`${cred.tokenId}-${index}`} className="p-4 bg-gray-700/50 rounded-lg border border-gray-600">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-semibold text-white">{cred.metadata.name}</h3>
                       <Badge variant="secondary" className="bg-green-600/20 text-green-400">
